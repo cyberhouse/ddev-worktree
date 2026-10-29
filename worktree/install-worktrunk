@@ -1,0 +1,81 @@
+#!/bin/sh
+#ddev-generated
+# Writes the Worktrunk hooks of this add-on (worktrunk.toml) into the Worktrunk user config, as block between two
+# marker lines. A rerun replaces the block, the rest of the config stays as it is. --remove removes the block.
+# Run by `ddev add-on get`, every other developer runs it once: sh .ddev/worktree/install-worktrunk
+set -eu
+
+begin='# >>> ddev-worktree >>>'
+end='# <<< ddev-worktree <<<'
+
+# Path of the Worktrunk user config
+if [ -n "${WORKTRUNK_CONFIG_PATH:-}" ]; then
+    config=$WORKTRUNK_CONFIG_PATH
+else
+    case "$(uname -s)" in
+        MINGW*|MSYS*|CYGWIN*) config=$APPDATA/worktrunk/config.toml ;;
+        *) config=${XDG_CONFIG_HOME:-$HOME/.config}/worktrunk/config.toml ;;
+    esac
+fi
+
+# The user's config without our block
+rest=
+if [ -f "$config" ]; then
+    # Without the end marker sed would delete everything after the begin marker
+    if grep -qxF "$begin" "$config" && ! grep -qxF "$end" "$config"; then
+        echo "Worktrunk hooks not changed: $config has the line '$begin' but not '$end'," >&2
+        echo "fix or remove the block and run: sh .ddev/worktree/install-worktrunk" >&2
+        exit 0
+    fi
+    rest=$(sed "/^$begin\$/,/^$end\$/d" "$config")
+fi
+
+if [ "${1:-}" = --remove ]; then
+    new=$rest
+    done_message="Worktrunk hooks removed from $config"
+else
+    # A [pre-start] table or a top-level pre-start = ... next to our [[pre-start]] is invalid TOML.
+    # Top-level keys only: in [projects."..."] a pre-start key is fine.
+    top=$(printf '%s\n' "$rest" | sed '/^ *\[/,$d')
+    if printf '%s\n' "$rest" | grep -Eq '^ *\[ *(pre-start|post-start|pre-remove) *\]' ||
+        printf '%s\n' "$top" | grep -Eq '^ *"?(pre-start|post-start|pre-remove)"? *[=.]'; then
+        echo "Worktrunk hooks not installed: $config defines pre-start, post-start or pre-remove as table," >&2
+        echo "change them to [[...]] blocks and run: sh .ddev/worktree/install-worktrunk" >&2
+        exit 0
+    fi
+
+    # Our block: worktrunk.toml between the markers
+    hooks=$(grep -vx '#ddev-generated' "$(dirname "$0")/worktrunk.toml")
+    block="$begin
+$hooks
+$end"
+
+    # Our block goes before the user's first [table]: top-level keys after our tables would belong to them.
+    # Without a table it goes at the end. (Passed via ENVIRON, awk -v would change the backslashes.)
+    if [ -z "$rest" ]; then
+        new=$block
+    else
+        export block
+        new=$(printf '%s\n' "$rest" | awk '
+            !done && /^ *\[/ { print ENVIRON["block"]; done = 1 }
+            { print }
+            END { if (!done) print ENVIRON["block"] }')
+    fi
+    done_message="Worktrunk hooks written to $config"
+fi
+
+if [ ! -f "$config" ] && [ -z "$new" ]; then
+    exit 0
+fi
+if [ -f "$config" ] && [ "$new" = "$(cat "$config")" ]; then
+    exit 0
+fi
+
+mkdir -p "$(dirname "$config")"
+# Backup of the user's config before our first write
+if [ -f "$config" ] && ! grep -qxF "$begin" "$config"; then
+    cp "$config" "$config.bak"
+fi
+# Written in place, not via mv: keeps a symlinked config (dotfiles) and its permissions
+printf '%s\n' "$new" > "$config"
+echo "$done_message"

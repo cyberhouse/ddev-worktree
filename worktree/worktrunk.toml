@@ -1,0 +1,18 @@
+#ddev-generated
+# DO NOT EDIT this block: managed by the DDEV add-on ddev-worktree, replaced by .ddev/worktree/install-worktrunk.
+# Own hooks go outside of it, for pre-start, post-start and pre-remove as [[...]] blocks (not [pre-start]).
+# Runs .ddev/worktree/<hook> of the main checkout, so branches older than the hooks work too; no-op in other repos.
+
+[[pre-start]]
+ddev = "f={{ primary_worktree_path }}/.ddev/worktree/{{ hook_type }}; [ ! -f \"$f\" ] || sh \"$f\""
+
+[[pre-start]]
+# After ddev: copy-ignored doesn't overwrite, a copied .ddev/config.local.yaml can't replace the worktree's DDEV name.
+# Windows: Worktrunk is git-wt, wt is Windows Terminal; without --require-include: every ignored file, node_modules too
+copy = "[ -d {{ primary_worktree_path }}/.ddev/worktree ] || exit 0; case $(uname -s) in MINGW*|MSYS*|CYGWIN*) wt=git-wt ;; *) wt=wt ;; esac; command -v \"$wt\" >/dev/null || { echo \"copy-ignored skipped: $wt not found\" >&2; exit 0; }; \"$wt\" step copy-ignored --require-include"
+
+[[post-start]]
+ddev = "f={{ primary_worktree_path }}/.ddev/worktree/{{ hook_type }}; [ ! -f \"$f\" ] || sh \"$f\""
+
+[[pre-remove]]
+ddev = "f={{ primary_worktree_path }}/.ddev/worktree/{{ hook_type }}; [ ! -f \"$f\" ] || sh \"$f\""

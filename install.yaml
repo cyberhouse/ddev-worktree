@@ -1,0 +1,23 @@
+name: worktree
+
+project_files:
+  - worktree/pre-start
+  - worktree/post-start
+  - worktree/pre-remove
+  - worktree/worktrunk.toml
+  - worktree/install-worktrunk
+
+post_install_actions:
+  - |
+    #ddev-description:Write the Worktrunk hooks into the user config
+    sh "${DDEV_APPROOT}/.ddev/worktree/install-worktrunk"
+    # Windows: wt is Windows Terminal, Worktrunk is git-wt
+    case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) wt=git-wt ;; *) wt=wt ;; esac
+    command -v "$wt" >/dev/null || echo "Worktrunk is not installed: https://worktrunk.dev"
+
+removal_actions:
+  - |
+    #ddev-description:Remove the Worktrunk hooks from the user config
+    sh "${DDEV_APPROOT}/.ddev/worktree/install-worktrunk" --remove
+
+ddev_version_constraint: '>= v1.25.4'
