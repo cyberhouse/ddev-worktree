@@ -18,6 +18,9 @@ its own DDEV project (URL, database, containers), managed by [Worktrunk](https:/
 - [Worktrunk](https://github.com/max-sixty/worktrunk#install), installed by every developer on the host, on Windows
 it is `git-wt` (`wt` is Windows Terminal). The add-on doesn't install it, `ddev add-on get` only warns if it's
 missing.
+- Optional, for [Claude Code](https://docs.anthropic.com/en/docs/claude-code): Worktrunk's plugin, `wt config plugins claude install`.
+Without it `claude --worktree` bypasses Worktrunk and none of the hooks run: no own DDEV name, no `ddev start`,
+no `ddev delete` on removal.
 
 ## Installation / update
 
@@ -74,6 +77,8 @@ Not with `wt merge`: it rebases the branch (by default also squashes it) instead
 worktrees of branches merged elsewhere, e.g. into `develop`, are removed with `wt remove`. It skips worktrees
 younger than a day, `--min-age=0s` includes them.
 - `wt remove` deletes the database **without a snapshot**. To keep it: `ddev export-db --file=../proj-5.sql.gz` first.
+- Claude Code with the plugin: `claude --worktree PROJ-5` creates and removes the worktree via `wt`, with its DDEV
+project. Worktrees of Claude Code subagents stay, remove them later with `wt remove` or `wt step prune`.
 - Created another way (IDE, `git worktree add`): run `wt hook pre-start` in it, then `ddev start`.
 - Removed another way (IDE, `git worktree remove`, `rm -rf`): the DDEV project stays, delete it by name:
 `ddev delete -Oy myproject-proj-5` and `git worktree prune`. A stopped leftover may be missing in `ddev list`,
