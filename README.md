@@ -63,8 +63,11 @@ to the main checkout's project, further hosts follow the same pattern: `https://
 
 ## Usage
 
+### From a terminal
+
 ```bash
-wt switch -c feature/PROJ-5-x   # create worktree + DDEV project, ddev start in the background
+wt switch -c feature/PROJ-5-x   # create worktree + DDEV project, ddev start in the background, cd into it
+wt switch feature/PROJ-5-x      # an existing branch: cd into its worktree, created if missing
 wt list                         # all worktrees
 wt remove                       # remove the current worktree and its DDEV project
 git fetch && wt step prune      # after the pull request is merged: remove merged worktrees (--dry-run first)
@@ -84,8 +87,22 @@ project. Worktrees of Claude Code subagents stay, remove them later with `wt rem
 `ddev delete -Oy myproject-proj-5` and `git worktree prune`. A stopped leftover may be missing in `ddev list`,
 its database still shows up in `docker volume ls`.
 - Don't run `ddev config` in a worktree, it removes `name:` from the committed `.ddev/config.yaml`.
-- Personal additions go outside the block, e.g. a new editor window per worktree:
-`[[post-start]]` `editor = "cursor {{ worktree_path }}"`.
+
+### From the terminal of an IDE (e.g. Cursor)
+
+The `cd` into the worktree doesn't fit here, the editor window stays on the main checkout. Instead open the worktree
+in its own editor window and keep the terminal where it is:
+
+```bash
+wt switch -c feature/PROJ-5-x --no-cd -x cursor -- .   # new branch, -x code for VS Code
+wt switch feature/PROJ-5-x --no-cd -x cursor -- .      # existing branch
+```
+
+- As alias in `~/.zshrc`: `alias wto='wt switch --no-cd -x cursor -- .'`, then `wto -c feature/PROJ-5-x`.
+- Or a new editor window for every new worktree, also from an external terminal: a personal hook outside the
+block, `[[post-start]]` `editor = "cursor {{ worktree_path }}"`. Not together with `-x cursor`, it opens the
+editor twice.
+- Everything else as [from a terminal](#from-a-terminal).
 
 ## Tests
 
