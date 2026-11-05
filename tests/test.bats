@@ -137,6 +137,18 @@ health_checks() {
   assert_output 0
 }
 
+@test "install-worktrunk refuses a [post-switch] table" {
+  set -eu -o pipefail
+  mkdir -p "$(dirname "${WORKTRUNK_CONFIG_PATH}")"
+  printf '[post-switch]\nx = "y"\n' > "${WORKTRUNK_CONFIG_PATH}"
+
+  run sh "${DIR}/worktree/install-worktrunk"
+  assert_success
+  assert_output --partial 'Worktrunk hooks not installed'
+  run grep -c 'ddev-worktree' "${WORKTRUNK_CONFIG_PATH}"
+  assert_output 0
+}
+
 @test "install-worktrunk allows pre-start keys in [projects]" {
   set -eu -o pipefail
   mkdir -p "$(dirname "${WORKTRUNK_CONFIG_PATH}")"
@@ -332,6 +344,33 @@ health_checks() {
   assert_success
   run cat "${DDEV_LOG}"
   assert_output ''
+}
+
+@test "post-switch opens the worktree in WT_EDITOR, without it nothing" {
+  set -eu -o pipefail
+  if ! command -v wt >/dev/null; then
+    [ -z "${GITHUB_ACTIONS:-}" ] || fail "wt is not installed"
+    skip "wt is not installed"
+  fi
+  sh "${DIR}/worktree/install-worktrunk"
+  git add -A
+  git commit -qm init
+  mkdir -p "${TESTDIR}/bin"
+  printf '#!/bin/sh\necho "$*" >> "%s/editor.log"\n' "${TESTDIR}" > "${TESTDIR}/bin/editor"
+  chmod +x "${TESTDIR}/bin/editor"
+  touch "${TESTDIR}/editor.log"
+
+  run wt switch -c feature/EDIT-1-x --yes --no-cd
+  assert_success
+  WT_EDITOR="${TESTDIR}/bin/editor" run wt switch -c feature/EDIT-2-x --yes --no-cd
+  assert_success
+  # post-switch may run in the background
+  for _ in $(seq 1 20); do
+    [ -s "${TESTDIR}/editor.log" ] && break
+    sleep 0.5
+  done
+  run cat "${TESTDIR}/editor.log"
+  assert_output "$(cd ../main.feature-EDIT-2-x && pwd)"
 }
 
 @test "wt hooks run the main checkout's scripts in a branch older than the add-on" {

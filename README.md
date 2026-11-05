@@ -9,7 +9,7 @@ its own DDEV project (URL, database, containers), managed by [Worktrunk](https:/
 | `worktree/pre-start` | DDEV name of a new worktree: project name plus the ticket of the branch (the whole branch without a ticket or when another worktree has the ticket), written to `.ddev/config.local.yaml` |
 | `worktree/post-start` | `ddev start` in the background, with an empty database unless the project's own DDEV hooks import one |
 | `worktree/pre-remove` | `ddev delete -Oy` before the worktree is removed, only for a name written by `pre-start` |
-| `worktree/worktrunk.toml` | Worktrunk hooks that run the main checkout's `.ddev/worktree/` scripts, plus `wt step copy-ignored` |
+| `worktree/worktrunk.toml` | Worktrunk hooks that run the main checkout's `.ddev/worktree/` scripts, plus `wt step copy-ignored` and opening the worktree in your editor ([IDE terminal](#from-the-terminal-of-an-ide-eg-cursor)) |
 | `worktree/install-worktrunk` | writes `worktrunk.toml` as marked block into your Worktrunk user config |
 
 ## Requirements
@@ -43,9 +43,11 @@ first table, so your top-level settings stay top-level and our hooks run first:
 
 - Don't edit the block, the next run replaces it. Everything outside stays as is, the first write keeps a
 `config.toml.bak`.
-- Own `pre-start`, `post-start` and `pre-remove` hooks must be `[[pre-start]]` blocks, a `[pre-start]` table or a
-top-level `pre-start = "..."` next to ours is invalid TOML. The script then writes nothing and says so.
-- The hooks are the same for all projects and do nothing in repositories without this add-on.
+- Own `pre-start`, `post-start`, `pre-remove` and `post-switch` hooks must be `[[pre-start]]` blocks, a
+`[pre-start]` table or a top-level `pre-start = "..."` next to ours is invalid TOML. The script then writes nothing
+and says so.
+- The hooks are the same for all projects and do nothing in repositories without this add-on, except the editor
+hook with `WT_EDITOR` set ([IDE terminal](#from-the-terminal-of-an-ide-eg-cursor)).
 - `ddev add-on remove worktree` removes the block again, other developers run
 `sh .ddev/worktree/install-worktrunk --remove` (before the removal is pulled).
 
@@ -91,17 +93,24 @@ its database still shows up in `docker volume ls`.
 ### From the terminal of an IDE (e.g. Cursor)
 
 The `cd` into the worktree doesn't fit here, the editor window stays on the main checkout. Instead open the worktree
-in its own editor window and keep the terminal where it is:
+in its own editor window and keep the terminal where it is. Once in your **user** `settings.json` of Cursor or VS
+Code (not the project's `.vscode/settings.json`, the editor is your choice), `"code"` for VS Code:
 
-```bash
-wt switch -c feature/PROJ-5-x --no-cd -x cursor -- .   # new branch, -x code for VS Code
-wt switch feature/PROJ-5-x --no-cd -x cursor -- .      # existing branch
+```json
+"terminal.integrated.env.osx": { "WORKTRUNK_SWITCH__CD": "false", "WT_EDITOR": "cursor" },
+"terminal.integrated.env.linux": { "WORKTRUNK_SWITCH__CD": "false", "WT_EDITOR": "cursor" },
+"terminal.integrated.env.windows": { "WORKTRUNK_SWITCH__CD": "false", "WT_EDITOR": "cursor" }
 ```
 
-- As alias in `~/.zshrc`: `alias wto='wt switch --no-cd -x cursor -- .'`, then `wto -c feature/PROJ-5-x`.
-- Or a new editor window for every new worktree, also from an external terminal: a personal hook outside the
-block, `[[post-start]]` `editor = "cursor {{ worktree_path }}"`. Not together with `-x cursor`, it opens the
-editor twice.
+Then in a newly opened terminal of the editor, `wt switch -c feature/PROJ-5-x` and `wt switch feature/PROJ-5-x` keep
+the terminal where it is and open the worktree in the editor (`post-switch` hook of the block):
+
+- Only the editor's terminals get these variables, an external terminal `cd`s as before. Without them the hook
+does nothing.
+- `.linux` also covers WSL, `.windows` Git Bash. Only one of the three applies, the other two do no harm.
+- The hook runs on every switch, also back to the main checkout: the editor then brings up the open window.
+- `wt switch --cd ...` changes into the worktree once anyway.
+- Without the settings: `wt switch -c feature/PROJ-5-x --no-cd -x cursor -- .` (`-x code` for VS Code).
 - Everything else as [from a terminal](#from-a-terminal).
 
 ## Tests

@@ -1,6 +1,6 @@
 #ddev-generated
 # DO NOT EDIT this block: managed by the DDEV add-on ddev-worktree, replaced by .ddev/worktree/install-worktrunk.
-# Own hooks go outside of it, for pre-start, post-start and pre-remove as [[...]] blocks (not [pre-start]).
+# Own hooks go outside of it, for pre-start, post-start, pre-remove and post-switch as [[...]] blocks (not [pre-start]).
 # Runs .ddev/worktree/<hook> of the main checkout, so branches older than the hooks work too; no-op in other repos.
 
 [[pre-start]]
@@ -16,3 +16,7 @@ ddev = "f={{ primary_worktree_path }}/.ddev/worktree/{{ hook_type }}; [ ! -f \"$
 
 [[pre-remove]]
 ddev = "f={{ primary_worktree_path }}/.ddev/worktree/{{ hook_type }}; [ ! -f \"$f\" ] || sh \"$f\""
+
+[[post-switch]]
+# WT_EDITOR comes from the IDE's terminal settings (README), without it a no-op; in every repo, like the no-cd setting
+editor = "[ -z \"${WT_EDITOR:-}\" ] || \"$WT_EDITOR\" {{ worktree_path }}"
