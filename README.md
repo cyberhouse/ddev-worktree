@@ -82,6 +82,9 @@ wt remove                       # remove the current worktree and its DDEV proje
 git fetch && wt step prune      # after the pull request is merged: remove merged worktrees (--dry-run first)
 ```
 
+- `wt switch -c` branches from the default branch (`main`), unlike `git switch -c` not from the current one, also
+inside another worktree. Another base: `--base @` (current branch), `--base develop`, `--base origin/main` (remote
+state, a local `main` may be behind). Worktrunk has no setting to change this default.
 - Merge via a pull request as usual, or locally in the main checkout:
 `git pull && git merge --no-ff feature/PROJ-5-x && git push`, then `wt remove feature/PROJ-5-x`.
 Not with `wt merge`: it rebases the branch (by default also squashes it) instead of a plain merge commit.
