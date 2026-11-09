@@ -8,7 +8,6 @@ host of the main checkout under its own TLD: `shop.ddev.site` becomes `shop.proj
 | File | Purpose |
 |---|---|
 | `worktree/pre-start` | DDEV name of a new worktree: project name plus the ticket of the branch (the whole branch without a ticket or when another worktree has the ticket), and the rest of the name as subdomain of the project's TLD, written to `.ddev/config.local.yaml` |
-| `worktree/post-start` | `ddev start` in the background, with an empty database unless the project's own DDEV hooks import one |
 | `worktree/pre-remove` | `ddev delete -Oy` before the worktree is removed, only for a name written by `pre-start` |
 | `worktree/worktrunk.toml` | Worktrunk hooks that run the main checkout's `.ddev/worktree/` scripts, plus `wt step copy-ignored` and opening the worktree in your editor ([IDE terminal](#from-the-terminal-of-an-ide-eg-cursor)) |
 | `worktree/install-worktrunk` | writes `worktrunk.toml` as marked block into your Worktrunk user config |
@@ -20,8 +19,8 @@ host of the main checkout under its own TLD: `shop.ddev.site` becomes `shop.proj
 it is `git-wt` (`wt` is Windows Terminal). The add-on doesn't install it, `ddev add-on get` only warns if it's
 missing.
 - Optional, for [Claude Code](https://docs.anthropic.com/en/docs/claude-code): Worktrunk's plugin, `wt config plugins claude install`.
-Without it `claude --worktree` bypasses Worktrunk and none of the hooks run: no own DDEV name, no `ddev start`,
-no `ddev delete` on removal.
+Without it `claude --worktree` bypasses Worktrunk and none of the hooks run: no own DDEV name, no `ddev delete`
+on removal.
 
 ## Installation / update
 
@@ -44,7 +43,7 @@ first table, so your top-level settings stay top-level and our hooks run first:
 
 - Don't edit the block, the next run replaces it. Everything outside stays as is, the first write keeps a
 `config.toml.bak`.
-- Own `pre-start`, `post-start`, `pre-remove` and `post-switch` hooks must be `[[pre-start]]` blocks, a
+- Own `pre-start`, `pre-remove` and `post-switch` hooks must be `[[pre-start]]` blocks, a
 `[pre-start]` table or a top-level `pre-start = "..."` next to ours is invalid TOML. The script then writes nothing
 and says so.
 - The hooks are the same for all projects and do nothing in repositories without this add-on, except the editor
@@ -75,7 +74,8 @@ primary URL is `myproject-proj-5.proj-5.ddev.site` (name plus TLD), a host no si
 ### From a terminal
 
 ```bash
-wt switch -c feature/PROJ-5-x   # create worktree + DDEV project, ddev start in the background, cd into it
+wt switch -c feature/PROJ-5-x   # create worktree with its own DDEV name, cd into it
+ddev start                      # start its DDEV project, empty database unless the project's DDEV hooks import one
 wt switch feature/PROJ-5-x      # an existing branch: cd into its worktree, created if missing
 wt list                         # all worktrees
 wt remove                       # remove the current worktree and its DDEV project

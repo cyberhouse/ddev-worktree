@@ -81,7 +81,7 @@ fake_ddev() {
 
 health_checks() {
   assert_file_exists .ddev/worktree/pre-start
-  assert_file_exists .ddev/worktree/post-start
+  assert_file_not_exists .ddev/worktree/post-start
   assert_file_exists .ddev/worktree/pre-remove
   run grep -c '^# >>> ddev-worktree >>>$' "${WORKTRUNK_CONFIG_PATH}"
   assert_output 1
@@ -327,7 +327,7 @@ additional_hostnames: [\"${PROJNAME}\"]"
   assert_file_not_exists .ddev/config.local.yaml
 }
 
-@test "post-start and pre-remove only act on a name from pre-start" {
+@test "pre-remove only acts on a name from pre-start" {
   set -eu -o pipefail
   install_addon "${DIR}"
   fake_ddev
@@ -335,22 +335,28 @@ additional_hostnames: [\"${PROJNAME}\"]"
 
   # main checkout: ddev delete would wipe the main project's database
   echo '# personal settings of the main checkout' > .ddev/config.local.yaml
-  sh "${hooks}/post-start"
   sh "${hooks}/pre-remove"
   # worktree without pre-start
   git worktree add -q ../a -b feature/PROJ-5-x
-  (cd ../a && sh "${hooks}/post-start" && sh "${hooks}/pre-remove")
+  (cd ../a && sh "${hooks}/pre-remove")
   run cat "${DDEV_LOG}"
   assert_output ''
 
   git worktree add -q ../b -b feature/PROJ-6-x
-  (cd ../b && sh "${hooks}/pre-start" && sh "${hooks}/post-start" && sh "${hooks}/pre-remove")
+  (cd ../b && sh "${hooks}/pre-start" && sh "${hooks}/pre-remove")
   run cat "${DDEV_LOG}"
-  assert_line --index 0 start
-  assert_line --index 1 'delete -Oy'
+  assert_output 'delete -Oy'
 }
 
-@test "wt switch -c starts a DDEV project, wt remove deletes it" {
+@test "update removes post-start of an older version" {
+  set -eu -o pipefail
+  mkdir -p .ddev/worktree
+  printf '#!/bin/sh\n#ddev-generated\nddev start\n' > .ddev/worktree/post-start
+  install_addon "${DIR}"
+  assert_file_not_exists .ddev/worktree/post-start
+}
+
+@test "wt switch -c names the DDEV project, wt remove deletes it" {
   set -eu -o pipefail
   if ! command -v wt >/dev/null; then
     [ -z "${GITHUB_ACTIONS:-}" ] || fail "wt is not installed"
@@ -367,11 +373,10 @@ additional_hostnames: [\"${PROJNAME}\"]"
   run grep '^name:' ../main.feature-E2E-1-x/.ddev/config.local.yaml
   assert_output "name: ${name}"
 
-  # post-start runs ddev start in the background
-  for _ in $(seq 1 60); do
-    [ "$(ddev describe -j "${name}" 2>/dev/null | jq -r .raw.status)" = running ] && break
-    sleep 5
-  done
+  # wt doesn't start it
+  run ddev describe "${name}"
+  assert_failure
+  (cd ../main.feature-E2E-1-x && ddev start)
   run bash -c "ddev describe -j '${name}' | jq -r .raw.status"
   assert_output running
   # the project's name under the worktree's TLD
@@ -451,14 +456,8 @@ additional_hostnames: [\"${PROJNAME}\"]"
   run grep '^name:' ../main.feature-OLD-1-x/.ddev/config.local.yaml
   assert_output "name: ${PROJNAME}-old-1"
 
-  # post-start runs in the background
-  for _ in $(seq 1 20); do
-    grep -qx start "${DDEV_LOG}" && break
-    sleep 0.5
-  done
   run wt remove feature/OLD-1-x --yes --foreground
   assert_success
   run cat "${DDEV_LOG}"
-  assert_line --index 0 start
-  assert_line --index 1 'delete -Oy'
+  assert_output 'delete -Oy'
 }

@@ -37,9 +37,9 @@ else
     # A [pre-start] table or a top-level pre-start = ... next to our [[pre-start]] is invalid TOML.
     # Top-level keys only: in [projects."..."] a pre-start key is fine.
     top=$(printf '%s\n' "$rest" | sed '/^ *\[/,$d')
-    if printf '%s\n' "$rest" | grep -Eq '^ *\[ *(pre-start|post-start|pre-remove|post-switch) *\]' ||
-        printf '%s\n' "$top" | grep -Eq '^ *"?(pre-start|post-start|pre-remove|post-switch)"? *[=.]'; then
-        echo "Worktrunk hooks not installed: $config defines pre-start, post-start, pre-remove or post-switch as table," >&2
+    if printf '%s\n' "$rest" | grep -Eq '^ *\[ *(pre-start|pre-remove|post-switch) *\]' ||
+        printf '%s\n' "$top" | grep -Eq '^ *"?(pre-start|pre-remove|post-switch)"? *[=.]'; then
+        echo "Worktrunk hooks not installed: $config defines pre-start, pre-remove or post-switch as table," >&2
         echo "change them to [[...]] blocks and run: sh .ddev/worktree/install-worktrunk" >&2
         exit 0
     fi
